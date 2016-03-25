@@ -1,15 +1,16 @@
 #[macro_use] extern crate log;
 
-use std::str;
 use std::io;
 use std::io::prelude::*;
 
 pub mod result;
 pub mod util;
+pub mod message;
 
 pub use result::{SshError, SshResult};
 
 use util::ReadExt;
+use message::{SshItem, Message};
 
 pub struct Reader<R: Read> {
     reader: R,
@@ -44,7 +45,7 @@ impl<R: Read> Reader<R> {
     fn read_line(&mut self) -> io::Result<Vec<u8>> {
         // `self.buf[..buf_pos]` doesn't have `\r\n`
         let mut buf_pos = 0;
-        let mut ret_len = 0;
+        let ret_len;
         'a: loop {
             let buflen = self.buf.len();
             if buflen > 0 {
@@ -84,7 +85,15 @@ impl<R: Read> Reader<R> {
         let payload = try!(self.reader.read_exact_to_vec(payload_len as usize));
         let _padding = try!(self.reader.read_exact_to_vec(padding_len as usize));
         // TODO mac
+
+        // TODO any assertions? e.g. packet_len > 0
         Ok(payload)
+    }
+
+    pub fn parse_raw_packet(&mut self, packet: Vec<u8>) -> SshResult<Message> {
+        let mut reader = io::Cursor::new(packet);
+        let msg: Message = try!(SshItem::ssh_read(&mut reader));
+        Ok(msg)
     }
 }
 
