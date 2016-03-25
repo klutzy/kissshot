@@ -1,0 +1,13 @@
+[package]
+name = "kissshot"
+version = "0.1.0"
+authors = ["klutzy <klutzytheklutzy@gmail.com>"]
+
+[dependencies]
+log = "*"
+
+[dependencies.ring]
+git = "https://github.com/briansmith/ring"
+
+[dev-dependencies]
+env_logger = "*"
