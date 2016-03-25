@@ -2,33 +2,38 @@
 
 use std::io::prelude::*;
 use std::io;
+use std::mem;
+
+// read/write system endian integers.
+macro_rules! read_write_prim {
+    ($read_name:ident, $write_name:ident, $t:ty, $len:expr) => (
+        #[inline(always)]
+        fn $read_name<R: ?Sized + ReadExt>(mut reader: &mut R) -> io::Result<$t> {
+            let mut buf = [0u8; $len];
+            try!(reader.read_exact(&mut buf));
+            let value: $t = unsafe { mem::transmute(buf) };
+            Ok(value)
+        }
+        #[inline(always)]
+        fn $write_name<R: ?Sized + Write>(mut writer: &mut R, value: $t) -> io::Result<()> {
+            let buf: [u8; $len] = unsafe { mem::transmute(value) };
+            try!(writer.write_all(&buf));
+            Ok(())
+        }
+    )
+}
+
+read_write_prim!(read_u8, write_u8, u8, 1);
+read_write_prim!(read_u16, write_u16, u16, 2);
+read_write_prim!(read_u32, write_u32, u32, 4);
+read_write_prim!(read_u64, write_u64, u64, 8);
+
 
 pub trait ReadExt: Read {
-    /// Fill buf completely or return `Err`.
-    /// NOTE: the default implementation returns `Err(io::ErrorKind::Other)` if EOF is found.
-    /// this may be not desired if the source is non-blocking.
     #[inline(always)]
-    fn fill_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
-        let len = buf.len();
-        let mut pos = 0;
-        while pos < len {
-            let num_bytes = try!(self.read(&mut buf[pos..]));
-            if num_bytes == 0 {
-                return Err(io::Error::new(io::ErrorKind::Other, SurugaError {
-                    desc: "EOF during `fill_exact`",
-                    cause: None
-                }));
-            }
-            pos += num_bytes;
-        }
-        Ok(())
-    }
-
-    #[inline(always)]
-    fn read_exact(&mut self, len: usize) -> io::Result<Vec<u8>> {
-        // FIXME this can be more efficient using unsafe methods
+    fn read_exact_to_vec(&mut self, len: usize) -> io::Result<Vec<u8>> {
         let mut vec = vec![0u8; len];
-        try!(self.fill_exact(&mut vec));
+        try!(self.read_exact(&mut vec));
         Ok(vec)
     }
 

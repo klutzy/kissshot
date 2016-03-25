@@ -5,7 +5,6 @@ use std::fmt;
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum SshErrorKind {
     IoFailure,
-    AlertReceived,
 }
 
 #[derive(Debug)]
@@ -27,7 +26,6 @@ impl Error for SshError {
     fn description(&self) -> &str {
         match self.kind {
             SshErrorKind::IoFailure => "i/o error",
-            SshErrorKind::AlertReceived => "received an alert",
         }
     }
 }

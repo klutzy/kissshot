@@ -5,8 +5,11 @@ use std::io;
 use std::io::prelude::*;
 
 pub mod result;
+pub mod util;
 
 pub use result::{SshError, SshResult};
+
+use util::ReadExt;
 
 pub struct Reader<R: Read> {
     reader: R,
@@ -67,6 +70,22 @@ impl<R: Read> Reader<R> {
         info!("read_line: received `{:?}` (utf8: {})", ret, String::from_utf8_lossy(&ret));
         return Ok(ret);
     }
+
+    pub fn read_raw_packet(&mut self) -> SshResult<Vec<u8>> {
+        let packet_len = try!(self.reader.read_be_u32());
+        info!("read_packet: packet_len {}", packet_len);
+        let padding_len = try!(self.reader.read_u8()) as u32;
+        info!("read_packet: padding_len {}", padding_len);
+        if padding_len < 4 || packet_len <= padding_len {
+            // TODO return SshError
+            panic!("padding is wrong omg packet_len {} padding_len {}", packet_len, padding_len);
+        }
+        let payload_len = packet_len - padding_len - 1;
+        let payload = try!(self.reader.read_exact_to_vec(payload_len as usize));
+        let _padding = try!(self.reader.read_exact_to_vec(padding_len as usize));
+        // TODO mac
+        Ok(payload)
+    }
 }
 
 pub struct Writer<W: Write> {
@@ -89,8 +108,8 @@ impl<W: Write> Writer<W> {
 }
 
 pub struct Client<R: Read, W: Write> {
-    reader: Reader<R>,
-    writer: Writer<W>,
+    pub reader: Reader<R>,
+    pub writer: Writer<W>,
 }
 
 impl<R: Read, W: Write> Client<R, W> {

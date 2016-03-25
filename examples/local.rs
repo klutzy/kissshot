@@ -16,6 +16,9 @@ fn test() -> kissshot::SshResult<()> {
     let mut client = kissshot::Client::new(stream_in, stream_out);
     try!(client.connect());
 
+    let packet = try!(client.reader.read_raw_packet());
+    println!("packet: {:?} ({})", packet, String::from_utf8_lossy(&packet));
+
     // try!(client.close());
 
     Ok(())
